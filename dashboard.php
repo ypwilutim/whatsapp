@@ -116,6 +116,7 @@ $totalUnread = array_sum(array_column($activeChats, 'unread_count'));
             </div>
         </div>
     </div>
+    <div class="mobile-backdrop"></div>
 
     <script src="assets/js/app.js"></script>
 </body>

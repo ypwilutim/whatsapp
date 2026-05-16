@@ -42,16 +42,32 @@
     function openChatArea() {
         document.querySelector('.chat-area')?.classList.add('active');
         document.querySelector('.mobile-backdrop')?.classList.add('active');
+        // Also activate sidebar on mobile
+        if (window.innerWidth <= 768) {
+            document.querySelector('.sidebar')?.classList.add('active');
+        }
     }
     function closeChatArea() {
         document.querySelector('.chat-area')?.classList.remove('active');
         document.querySelector('.mobile-backdrop')?.classList.remove('active');
+        // Also deactivate sidebar on mobile
+        if (window.innerWidth <= 768) {
+            document.querySelector('.sidebar')?.classList.remove('active');
+        }
     }
 
     // Remove backdrop on click
     document.addEventListener('click', e => {
         if (e.target.classList.contains('mobile-backdrop')) closeChatArea();
     });
+
+    // Toggle sidebar on mobile
+    window.toggleSidebar = function() {
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) {
+            sidebar.classList.toggle('active');
+        }
+    };
 
     // ===================== CUSTOMER LIST =====================
     function handleCustomerClick(el) {
