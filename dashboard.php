@@ -6,7 +6,7 @@ if (!isset($_SESSION['agent_id'])) {
     exit;
 }
 
-require_once __DIR__ . '/database.php';
+require_once __DIR__ . '/config/database.php';
 
 $pdo = (new Database())->getConnection();
 
@@ -52,7 +52,7 @@ $totalUnread = array_sum(array_column($activeChats, 'unread_count'));
                     </div>
                 </div>
                 <div class="sidebar-actions">
-                    <a href="logout.php" class="btn btn-logout" title="Logout">🚪</a>
+                    <a href="logout.php" class="btn btn-logout" title="Logout">&#128682;</a>
                 </div>
             </div>
 
@@ -96,7 +96,7 @@ $totalUnread = array_sum(array_column($activeChats, 'unread_count'));
             </div>
             <div class="messages-container" id="messagesContainer">
                 <div class="empty-chat">
-                    <div class="empty-chat-icon">💬</div>
+                    <div class="empty-chat-icon">&#128172;</div>
                     <p>Silakan pilih customer dari daftar untuk mulai mengobrol</p>
                 </div>
             </div>
@@ -105,9 +105,9 @@ $totalUnread = array_sum(array_column($activeChats, 'unread_count'));
                     <div class="input-wrapper">
                         <input type="hidden" id="currentChatId" name="chat_id">
                         <input type="hidden" id="currentCustomerNumber" name="customer_number">
-                        <textarea 
-                            id="messageInput" 
-                            placeholder="Ketik pesan... (Enter untuk kirim, Shift+Enter untuk baris baru)" 
+                        <textarea
+                            id="messageInput"
+                            placeholder="Ketik pesan... (Enter untuk kirim, Shift+Enter untuk baris baru)"
                             rows="1"
                         ></textarea>
                         <button type="submit" class="btn btn-send">Kirim</button>
@@ -127,8 +127,7 @@ if (isset($_GET['action'])) {
     header('Content-Type: application/json');
     $action = $_GET['action'];
 
-    // Koneksi cepat untuk helper (jika tanpa session yang memuat koneksi)
-    require_once __DIR__ . '/database.php';
+    require_once __DIR__ . '/config/database.php';
     $pdo = (new Database())->getConnection();
 
     if ($action === 'get_agents') {

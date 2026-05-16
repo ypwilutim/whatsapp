@@ -1,10 +1,4 @@
 <?php
-/**
- * AMBIL PESAN PER CHAT
- * GET ?chat_id=<id>
- * Return semua pesan dalam chat + info chat
- * CS agent dengan login
- */
 header('Content-Type: application/json');
 session_start();
 
@@ -13,7 +7,7 @@ if (!isset($_SESSION['agent_id'])) {
     exit;
 }
 
-require_once __DIR__ . '/../database.php';
+require_once __DIR__ . '/../config/database.php';
 $pdo = (new Database())->getConnection();
 
 $chat_id = $_GET['chat_id'] ?? null;
@@ -33,6 +27,7 @@ $stmt = $pdo->prepare('
 $stmt->execute(['chat_id' => $chat_id]);
 $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+// Mark customer pesan sebagai terbaca
 $pdo->prepare('UPDATE messages SET is_wa_sent = 1 WHERE chat_id = :id AND sender_type = "customer" AND is_wa_sent = 0')
     ->execute(['id' => $chat_id]);
 
@@ -50,4 +45,3 @@ echo json_encode([
     'messages' => $messages,
     'chat'     => $chatInfo,
 ]);
-exit;

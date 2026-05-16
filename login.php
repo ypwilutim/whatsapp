@@ -8,7 +8,7 @@ if (isset($_SESSION['agent_id'])) {
 
 $error = '';
 
-require_once __DIR__ . '/database.php';
+require_once __DIR__ . '/config/database.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $pdo = (new Database())->getConnection();

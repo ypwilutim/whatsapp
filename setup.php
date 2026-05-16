@@ -4,7 +4,7 @@
 // Default CS pass: admin123
 // Script auto-deletes after running!
 
-require_once __DIR__ . '/database.php';
+require_once __DIR__ . '/config/database.php';
 
 $pdo = (new Database())->getConnection();
 

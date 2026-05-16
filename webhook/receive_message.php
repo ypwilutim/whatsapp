@@ -3,37 +3,28 @@
  * WEBHOOK WHACENTER
  * Format dari WHACenter (POST JSON):
  *   { "from": "6285603051722", "to": "6285156108635", "message": "...", "media": "url", "timestamp": "..." }
- *
  * Set di WHACenter Dashboard → Webhook:
- *   http://wa.ypwilutim.com/webhook/receive_message.php
+ *   https://wa.ypwilutim.com/webhook/receive_message.php
  */
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    exit;
-}
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { exit; }
 
-require_once __DIR__ . '/../database.php';
+require_once __DIR__ . '/../config/database.php';
 $pdo = (new Database())->getConnection();
 
-// ===== Ambil input =====
 $raw   = file_get_contents('php://input');
 $input = json_decode($raw, true);
+if (!$input) { $input = $_POST; }
 
-if (!$input) {
-    $input = $_POST;
-}
-
-$from       = $input['from']       ?? '';
-$to         = $input['to']         ?? '';
-$message    = $input['message']    ?? '';
-$media      = $input['media']      ?? '';
-$timestamp  = $input['timestamp']  ?? date('Y-m-d H:i:s');
-
-error_log("WHACenter webhook | from=$from | msg=" . substr($message, 0, 80) . " | media=$media");
+$from      = $input['from']      ?? '';
+$to        = $input['to']        ?? '';
+$message   = $input['message']   ?? '';
+$media     = $input['media']     ?? '';
+$timestamp = $input['timestamp'] ?? date('Y-m-d H:i:s');
 
 if (empty($from) || empty($message)) {
     http_response_code(400);
@@ -41,7 +32,6 @@ if (empty($from) || empty($message)) {
     exit;
 }
 
-// ===== Normalisasi nomor =====
 $from = preg_replace('/[^0-9]/', '', $from);
 if (substr($from, 0, 1) === '0') { $from = '62' . substr($from, 1); }
 if (substr($from, 0, 1) !== '6') { $from = '62' . $from; }
@@ -50,53 +40,32 @@ $to = preg_replace('/[^0-9]/', '', $to);
 if (substr($to, 0, 1) === '0') { $to = '62' . substr($to, 1); }
 if (substr($to, 0, 1) !== '6') { $to = '62' . $to; }
 
-// ===== Ambil atau Buat Customer =====
+// Cari atau buat customer
 $stmt = $pdo->prepare('SELECT * FROM customers WHERE nomor_wa = :nomor LIMIT 1');
 $stmt->execute(['nomor' => $from]);
 $customer = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$customer) {
-    $pdo->prepare('INSERT INTO customers (nomor_wa) VALUES (:nomor)')
-        ->execute(['nomor' => $from]);
+    $pdo->prepare('INSERT INTO customers (nomor_wa) VALUES (:nomor)')->execute(['nomor' => $from]);
     $customer_id = $pdo->lastInsertId();
 } else {
     $customer_id = $customer['id'];
-    $pdo->prepare('UPDATE customers SET last_seen = NOW() WHERE id = :id')
-        ->execute(['id' => $customer_id]);
+    $pdo->prepare('UPDATE customers SET last_seen = NOW() WHERE id = :id')->execute(['id' => $customer_id]);
 }
 
-// ===== Cari atau Buat Chat =====
-$stmt = $pdo->prepare(
-    'SELECT * FROM chats WHERE customer_id = :cid AND status = "open" LIMIT 1'
-);
+// Cari atau buat chat
+$stmt = $pdo->prepare('SELECT * FROM chats WHERE customer_id = :cid AND status = "open" LIMIT 1');
 $stmt->execute(['cid' => $customer_id]);
 $chat = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$chat) {
-    // Auto-assign ke agent paling santai (paling sedikit chat open)
-    $stmt = $pdo->prepare("
-        SELECT a.id FROM agents a
-        LEFT JOIN chats c ON c.agent_id = a.id AND c.status = 'open'
-        WHERE a.is_online = 1
-        GROUP BY a.id
-        ORDER BY COUNT(c.id) ASC, a.id ASC
-        LIMIT 1
-    ");
-    $stmt->execute();
-    $agent = $stmt->fetch(PDO::FETCH_ASSOC);
-    $agent_id = $agent['id'] ?? null;
-
-    $pdo->prepare('
-        INSERT INTO chats (customer_id, agent_id, status)
-        VALUES (:cid, :aid, "open")
-    ')->execute(['cid' => $customer_id, 'aid' => $agent_id]);
-
+    $pdo->prepare('INSERT INTO chats (customer_id, status) VALUES (:cid, "open")')->execute(['cid' => $customer_id]);
     $chat_id = $pdo->lastInsertId();
 } else {
     $chat_id = $chat['id'];
 }
 
-// ===== Simpan pesan customer =====
+// Simpan pesan customer
 $tipe  = $media ? 'image' : 'text';
 $pesan = $media ? trim($message ?: '[Media]') : $message;
 
@@ -109,14 +78,12 @@ $stmt->execute([
     'pesan'   => $pesan,
     'tipe'    => $tipe,
 ]);
-
 $msg_id = $pdo->lastInsertId();
 
-// ===== Response ke WHACenter =====
 echo json_encode([
-    'status'       => 'success',
-    'msg_id'       => (int)$msg_id,
-    'chat_id'      => (int)$chat_id,
-    'customer_id'  => (int)$customer_id,
-    'received'     => true,
+    'status'      => 'success',
+    'msg_id'      => (int)$msg_id,
+    'chat_id'     => (int)$chat_id,
+    'customer_id' => (int)$customer_id,
+    'received'    => true,
 ]);
