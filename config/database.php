@@ -16,8 +16,9 @@ class Database {
             );
             $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         } catch(PDOException $e) {
-            echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $e->getMessage()]);
-            exit;
+            // Return null and let the caller handle the error
+            error_log("Database connection error: " . $e->getMessage());
+            return null;
         }
         return $this->conn;
     }

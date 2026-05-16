@@ -7,6 +7,11 @@ header('Content-Type: application/json');
 header('Cache-Control: no-cache');
 session_start();
 
+// Enable error logging to catch any issues
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+error_reporting(E_ALL);
+
 if (!isset($_SESSION['agent_id'])) {
     echo json_encode(['status' => 'error', 'message' => 'Unauthorized: silakan login CS']);
     exit;
@@ -35,7 +40,12 @@ if (!is_file($dbFile)) {
 require_once $dbFile;
 try {
     $pdo = (new Database())->getConnection();
+    if ($pdo === null) {
+        echo json_encode(['status' => 'error', 'message' => 'Gagal koneksi ke database']);
+        exit;
+    }
 } catch (Exception $e) {
+    error_log("Database connection error: " . $e->getMessage());
     echo json_encode(['status' => 'error', 'message' => 'Gagal koneksi DB: ' . $e->getMessage()]);
     exit;
 }
@@ -53,6 +63,7 @@ require_once $apiFile;
 try {
     $api = new WhacenterAPI();
 } catch (Exception $e) {
+    error_log("WhatsApp API load error: " . $e->getMessage());
     echo json_encode(['status' => 'error', 'message' => 'Gagal load WHACenter API: ' . $e->getMessage()]);
     exit;
 }
@@ -77,6 +88,7 @@ try {
         exit;
     }
 } catch (Exception $e) {
+    error_log("WhatsApp API send error: " . $e->getMessage());
     echo json_encode(['status' => 'error', 'message' => 'Error WHACenter API: ' . $e->getMessage()]);
     exit;
 }
@@ -106,9 +118,19 @@ try {
     exit;
 
 } catch (Exception $e) {
+    error_log("Database query error: " . $e->getMessage());
     echo json_encode([
         'status' => 'error', 
         'message' => 'Query database gagal dijalankan. Ada kemungkinan kolom tabel messages tidak cocok: ' . $e->getMessage()
+    ]);
+    exit;
+}
+// Catch any other unexpected errors
+} catch (Exception $e) {
+    error_log("Unexpected error in send_message.php: " . $e->getMessage());
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'Terjadi kesalahan tidak terduga: ' . $e->getMessage()
     ]);
     exit;
 }
