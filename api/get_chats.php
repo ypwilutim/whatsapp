@@ -9,6 +9,11 @@ error_reporting(E_ALL);
 
 // Catch any unexpected errors in the main logic
 try {
+    if (!isset($_SESSION['agent_id'])) {
+        echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+        exit;
+    }
+
     try {
         require_once __DIR__ . '/../config/database.php';
         $pdo = (new Database())->getConnection();
