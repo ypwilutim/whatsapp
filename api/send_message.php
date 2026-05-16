@@ -15,13 +15,15 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['status' => 'error', 'message' => 'Method tidak diizinkan']);
     exit;
 }
-$chat_id  = isset($_POST['chat_id'])  ? trim($_POST['chat_id'])  : '';
-$number   = isset($_POST['number'])   ? trim($_POST['number'])   : '';
-$message  = isset($_POST['message'])  ? trim($_POST['message'])  : '';
-$file_url = isset($_POST['file_url']) ? trim($_POST['file_url']) : '';
+
+// Menyelaraskan parameter agar bisa membaca 'number' atau 'customer_number' dari app.js
+$chat_id  = isset($_POST['chat_id'])          ? trim($_POST['chat_id'])          : '';
+$number   = isset($_POST['customer_number'])  ? trim($_POST['customer_number'])  : (isset($_POST['number']) ? trim($_POST['number']) : '');
+$message  = isset($_POST['message'])         ? trim($_POST['message'])          : '';
+$file_url = isset($_POST['file_url'])        ? trim($_POST['file_url'])         : '';
 
 if ($chat_id === '' || $number === '' || $message === '') {
-    echo json_encode(['status' => 'error', 'message' => 'Data tidak lengkap']);
+    echo json_encode(['status' => 'error', 'message' => 'Data tidak lengkap. Chat ID: '.$chat_id.', Number: '.$number]);
     exit;
 }
 
@@ -80,20 +82,33 @@ try {
 }
 
 $whacenter_id = isset($result['data']['id']) ? $result['data']['id'] : null;
-$stmt = $pdo->prepare("
-    INSERT INTO messages (chat_id, sender_type, pesan, tipe_pesan, is_wa_sent, whacenter_msg_id)
-    VALUES (:chat_id, 'agent', :pesan, :tipe, 1, :wc_id)
-");
-$stmt->execute([
-    'chat_id' => $chat_id,
-    'pesan'   => $message,
-    'tipe'    => $file_url ? 'file' : 'text',
-    'wc_id'   => $whacenter_id,
-]);
-$pdo->prepare('UPDATE chats SET assigned_at = NOW() WHERE id = :id')->execute(['id' => $chat_id]);
 
-echo json_encode([
-    'status'     => 'success',
-    'msg_id'     => $pdo->lastInsertId(),
-    'created_at' => date('Y-m-d H:i:s'),
-]);
+try {
+    // Membungkus Query SQL dengan try-catch agar jika struktur tabel MySQL Anda berbeda, ia memunculkan pesan error JSON yang jelas
+    $stmt = $pdo->prepare("
+        INSERT INTO messages (chat_id, sender_type, pesan, tipe_pesan, is_wa_sent, whacenter_msg_id)
+        VALUES (:chat_id, 'agent', :pesan, :tipe, 1, :wc_id)
+    ");
+    $stmt->execute([
+        'chat_id' => $chat_id,
+        'pesan'   => $message,
+        'tipe'    => $file_url ? 'file' : 'text',
+        'wc_id'   => $whacenter_id,
+    ]);
+    
+    $pdo->prepare('UPDATE chats SET assigned_at = NOW() WHERE id = :id')->execute(['id' => $chat_id]);
+
+    echo json_encode([
+        'status'     => 'success',
+        'msg_id'     => $pdo->lastInsertId(),
+        'created_at' => date('Y-m-d H:i:s'),
+    ]);
+    exit;
+
+} catch (Exception $e) {
+    echo json_encode([
+        'status' => 'error', 
+        'message' => 'Query database gagal dijalankan. Ada kemungkinan kolom tabel messages tidak cocok: ' . $e->getMessage()
+    ]);
+    exit;
+}
