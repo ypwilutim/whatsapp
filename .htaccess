@@ -1,0 +1,5 @@
+# Matikan daftar folder
+Options -Indexes
+
+# Jadikan login.php sebagai halaman utama subdomain
+DirectoryIndex login.php
