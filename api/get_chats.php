@@ -7,11 +7,6 @@ ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 error_reporting(E_ALL);
 
-if (!isset($_SESSION['agent_id'])) {
-    echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
-    exit;
-}
-
 // Catch any unexpected errors in the main logic
 try {
     try {
