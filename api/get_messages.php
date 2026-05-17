@@ -7,9 +7,13 @@ ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 error_reporting(E_ALL);
 
+// Log the request
+error_log("GET_MESSAGES_REQUEST: agent_id=" . ($_SESSION['agent_id'] ?? 'none') . " chat_id=" . ($_GET['chat_id'] ?? 'none') . " from=" . $_SERVER['REMOTE_ADDR']);
+
 // Catch any unexpected errors in the main logic
 try {
     if (!isset($_SESSION['agent_id'])) {
+        error_log("GET_MESSAGES_ERROR: Unauthorized access attempt");
         echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
         exit;
     }
@@ -18,17 +22,19 @@ try {
         require_once __DIR__ . '/../config/database.php';
         $pdo = (new Database())->getConnection();
         if ($pdo === null) {
+            error_log("GET_MESSAGES_ERROR: Database connection failed");
             echo json_encode(['status' => 'error', 'message' => 'Database connection failed']);
             exit;
         }
     } catch (Exception $e) {
-        error_log("Database connection error in get_messages.php: " . $e->getMessage());
+        error_log("GET_MESSAGES_ERROR: Database connection error: " . $e->getMessage());
         echo json_encode(['status' => 'error', 'message' => 'Database connection failed: ' . $e->getMessage()]);
         exit;
     }
 
     $chat_id = $_GET['chat_id'] ?? null;
     if (!$chat_id) {
+        error_log("GET_MESSAGES_ERROR: Missing chat_id parameter");
         echo json_encode(['status' => 'error', 'message' => 'chat_id wajib']);
         exit;
     }
@@ -44,8 +50,9 @@ try {
         ');
         $stmt->execute(['chat_id' => $chat_id]);
         $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        error_log("GET_MESSAGES_SUCCESS: Retrieved " . count($messages) . " messages for chat_id=$chat_id");
     } catch (Exception $e) {
-        error_log("Database query error in get_messages.php: " . $e->getMessage());
+        error_log("GET_MESSAGES_ERROR: Database query error: " . $e->getMessage());
         echo json_encode(['status' => 'error', 'message' => 'Failed to fetch messages: ' . $e->getMessage()]);
         exit;
     }
@@ -54,8 +61,9 @@ try {
     try {
         $pdo->prepare('UPDATE messages SET is_wa_sent = 1 WHERE chat_id = :id AND sender_type = "customer" AND is_wa_sent = 0')
             ->execute(['id' => $chat_id]);
+        error_log("GET_MESSAGES_SUCCESS: Marked messages as read for chat_id=$chat_id");
     } catch (Exception $e) {
-        error_log("Failed to mark messages as read in get_messages.php: " . $e->getMessage());
+        error_log("GET_MESSAGES_WARNING: Failed to mark messages as read: " . $e->getMessage());
         // Continue anyway, this is not critical
     }
 
@@ -68,8 +76,9 @@ try {
         ");
         $chatStmt->execute(['id' => $chat_id]);
         $chatInfo = $chatStmt->fetch(PDO::FETCH_ASSOC);
+        error_log("GET_MESSAGES_SUCCESS: Retrieved chat info for chat_id=$chat_id");
     } catch (Exception $e) {
-        error_log("Failed to fetch chat info in get_messages.php: " . $e->getMessage());
+        error_log("GET_MESSAGES_WARNING: Failed to fetch chat info: " . $e->getMessage());
         $chatInfo = null;
     }
 
@@ -79,7 +88,7 @@ try {
         'chat'     => $chatInfo,
     ]);
 } catch (Exception $e) {
-    error_log("Unexpected error in get_messages.php: " . $e->getMessage());
+    error_log("GET_MESSAGES_ERROR: Unexpected error: " . $e->getMessage());
     echo json_encode([
         'status' => 'error',
         'message' => 'Terjadi kesalahan tidak terduga: ' . $e->getMessage()

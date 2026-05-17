@@ -15,9 +15,10 @@ class Database {
                 $this->password
             );
             $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            error_log("Database connection established successfully");
         } catch(PDOException $e) {
             // Return null and let the caller handle the error
-            error_log("Database connection error: " . $e->getMessage());
+            error_log("Database connection failed: " . $e->getMessage());
             return null;
         }
         return $this->conn;
